@@ -9,3 +9,4 @@ This is a fairly popular ice maker, with a number of different design styles.  T
 - A Water Empty LED
 - Separate LEDs for Small and Large ice
 
+![HZB-12B-B Ice Maker used for this project].(hzb-12b-b.jpg).
