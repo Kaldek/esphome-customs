@@ -1,0 +1,93 @@
+esphome:
+  name: ice-maker
+  friendly_name: Ice Maker
+
+esp8266:
+  board: esp01_1m
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+captive_portal:
+
+api:
+  encryption:
+    key: !secret api_key
+
+ota:
+  platform: esphome
+  password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "Ice Maker"
+    password: !secret wifi_ap_password
+
+# Momentary "virtual button" for MOSFET control on GPIO5
+switch:
+  - platform: gpio
+    pin: GPIO5
+    id: mosfet_control
+    on_turn_on:
+      - delay: 100ms  # Momentarily turn on for 100 milliseconds
+      - switch.turn_off: mosfet_control
+    name: "Power Button"
+
+# Interval to check toggling signal for standby/on detection
+interval:
+  - interval: 1s
+    then:
+      - lambda: |
+          static int high_duration = 0;
+          static int low_duration = 0;
+          static std::string last_state;
+
+          // Check GPIO12 (D6) state
+          if (id(power_led).state) {
+            high_duration++;
+            low_duration = 0;  // Reset low duration when Power LED signal is high
+            
+            // If it's been high for more than 3 seconds, we are "ON"
+            if (high_duration >= 3 && last_state != "ON") {
+              id(ice_maker_state).publish_state("ON");
+              last_state = "ON";  // Update last recorded state
+            }
+          } else {
+            low_duration++;
+            high_duration = 0;  // Reset high duration when the Power LED signal is low
+            
+            // If the Power LED signal has toggled consistently for low durations, we are "OFF"
+            if (low_duration >= 3 && last_state != "OFF") {
+              id(ice_maker_state).publish_state("OFF");
+              last_state = "OFF";  // Update last recorded state
+            }
+          }
+
+# Monitoring the signal (2V expected) on GPIO12 without sending state transitions
+binary_sensor:
+  - platform: gpio
+    pin: GPIO12  
+    id: power_led  # Internal only, won't send state changes to HA
+    internal: true
+    
+
+  - platform: gpio
+    pin: GPIO4 
+    name: "Ice Full"
+    
+
+# Binary sensor for Water Empty status detection on GPIO13 (D7 on WeMos D1 Mini)
+  - platform: gpio
+    pin: GPIO16 
+    name: "Water Empty"
+     
+
+# Text sensor to report "Ice Maker State" which gets updated only if actual state changes
+text_sensor:
+  - platform: template
+    name: "Power"
+    id: ice_maker_state
+    icon: "mdi:power"
+    update_interval: never  # Manually updated when state changes in lambda
