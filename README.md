@@ -9,6 +9,7 @@ This is a fairly popular ice maker, with a number of different design styles.  T
 - A Water Empty LED
 - Separate LEDs for Small and Large ice
 
+Note that we do *not* currently monitor the ice cube size. We don't make small ice and never press that button so we don't monitor it.
 
 ![HZB-12B-B Image](https://github.com/Kaldek/esphome-customs/raw/main/HZB-12B-B.jpg)
 
