@@ -55,10 +55,13 @@ switch:
       - delay: 100ms  # Momentarily turn on for 100 milliseconds
       - switch.turn_off: mosfet_control
     internal: true  # Internal only
+  
+  - platform: restart
+    name: "Restart Module"
 
   # Template Switch to show in HA
   - platform: template
-    name: "Ice Maker"
+    name: "Power"
     id: ice_maker_switch
     lambda: |-
       if (id(ice_maker_state).state == "ON") {
@@ -137,15 +140,21 @@ binary_sensor:
     id: power_led  
     internal: true
 
-# Ice Full sensor
+# Ice Tray Status
   - platform: gpio
     pin: GPIO4 
-    name: "Ice Full"
+    name: "Ice Tray"
+    id: ice_tray_sensor
+    internal: True
+    device_class: problem
 
-# Water Empty status detection on GPIO13
+# Water Tank Status
   - platform: gpio
     pin: GPIO16 
-    name: "Water Empty"
+    name: "Water Tank"
+    id: water_tank_sensor
+    internal: True
+    device_class: problem
 
 # Text sensor for Power state
 text_sensor:
@@ -153,4 +162,27 @@ text_sensor:
     name: "Power"
     id: ice_maker_state
     icon: "mdi:power"
-    update_interval: never  
+    internal: True
+    update_interval: never
+
+  - platform: template
+    name: "Ice Tray Status"
+    id: ice_tray_status
+    lambda: |-
+      if (id(ice_tray_sensor).state) {
+        return {"Full"};
+      } else {
+        return {"OK"};
+      }
+    update_interval: 5s
+
+  - platform: template
+    name: "Water Tank Status"
+    id: water_tank_status
+    lambda: |-
+      if (id(water_tank_sensor).state) {
+        return {"Empty"};
+      } else {
+        return {"OK"};
+      }
+    update_interval: 5s
