@@ -26,4 +26,4 @@ We use a 2n7000 MOSFET, with Source and Drain bridged across the pins shared by 
 We monitor the power feed to the Power LED, connected directly to GPIO12 of the ESP8266.  As this LED flashes when in Standby, we use ESPHome intervals and Lambda to determine if the ice maker is on or off (in standby).
 
 #### Ice Full and Water Empty monitoring
-We monitor the power feed to these LEDs, connected to GPIO4 (ice full) and GPIO4 (water empty).  When the power on these GPIO pins goes High, this is triggers these states.
+We monitor the power feed to these LEDs, connected to GPIO4 (ice full) and GPIO16 (water empty).  When the power on these GPIO pins goes High, this is triggers these states.
