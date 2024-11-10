@@ -9,7 +9,6 @@ This is a fairly popular ice maker, with a number of different design styles.  T
 - A Water Empty LED
 - Separate LEDs for Small and Large ice
 
-Currently the power toggle and power status are separate, which needs to be fixed.
 
 ![HZB-12B-B Image](https://github.com/Kaldek/esphome-customs/raw/main/HZB-12B-B.jpg)
 
