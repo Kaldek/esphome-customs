@@ -12,3 +12,18 @@ This is a fairly popular ice maker, with a number of different design styles.  T
 Currently the power toggle and power status are separate, which needs to be fixed.
 
 ![HZB-12B-B Image](https://github.com/Kaldek/esphome-customs/raw/main/HZB-12B-B.jpg)
+
+### Electrical connections
+A circuit schematic will be created but in the interim we describe the connections.
+
+#### ESP8266 power
+You will need to provide a 3.3v regulator to power the ESP8266, tapping into the 13v power output from the transformer on the Ice Maker PCB.  A 7805 regulator exists on the ice maker PCB but it is 100mA only (78L05) and cannot power the ESP8266.
+
+#### Power switch control
+We use a 2n7000 MOSFET, with Source and Drain bridged across the pins shared by the power button on the power/LED daughterboard in the ice maker lid.  The gate of the MOSFET is driven by GPIO5.
+
+#### Power state monitoring
+We monitor the power feed to the Power LED, connected directly to GPIO12 of the ESP8266.  As this LED flashes when in Standby, we use ESPHome intervals and Lambda to determine if the ice maker is on or off (in standby).
+
+#### Ice Full and Water Empty monitoring
+We monitor the power feed to these LEDs, connected to GPIO4 (ice full) and GPIO4 (water empty).  When the power on these GPIO pins goes High, this is triggers these states.
