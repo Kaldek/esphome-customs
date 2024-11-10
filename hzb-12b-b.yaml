@@ -2,6 +2,13 @@ esphome:
   name: ice-maker
   friendly_name: Ice Maker
 
+  on_boot:
+    priority: -10  # Run this early on boot
+    then:
+    - logger.log: "ESP8266 booting up, delaying state updates..."
+    - delay: 5s  # Allow 5 seconds for everything to stabilize, skip actions during this time
+    - lambda: 'id(boot_done) = true;'  # Now actions can trigger
+
 esp8266:
   board: esp01_1m
 
@@ -26,8 +33,13 @@ wifi:
     ssid: "Ice Maker"
     password: !secret wifi_ap_password
 
-# An internal binary sensor to indicate when we are syncing the UI state
+# Global variable to indicate if boot sequence is still ongoing
 globals:
+  - id: boot_done
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
   - id: syncing
     type: bool
     restore_value: no
@@ -41,32 +53,35 @@ switch:
     on_turn_on:
       - delay: 100ms  # Momentarily turn on for 100 milliseconds
       - switch.turn_off: mosfet_control
-    internal: true  # Hide this from HA, we manage it internally
-  
-  # Template switch to reflect Ice Maker ON/OFF state, reflect both user requests and actual power state
+    internal: true  # Internal only
+
+  # Template Switch to show in HA
   - platform: template
     name: "Ice Maker"
     id: ice_maker_switch
     lambda: |-
       if (id(ice_maker_state).state == "ON") {
-        return true;  // Ensure switch shows ON state in HA
+        return true;
       } else {
-        return false;  // Ensure switch shows OFF state in HA
+        return false;
       }
     turn_on_action:
       - if:
           condition:
-            lambda: 'return !id(syncing);'  # MOSFET trigger only if not syncing
+            lambda: 'return !id(syncing) && id(boot_done);'  
           then:
             - logger.log: "Ice Maker manually turned ON via HA, triggering MOSFET."
             - switch.turn_on: mosfet_control
     turn_off_action:
       - if:
           condition:
-            lambda: 'return !id(syncing);'  # MOSFET trigger only if not syncing
+            lambda: 'return !id(syncing) && id(boot_done);' 
           then:
             - logger.log: "Ice Maker manually turned OFF via HA, triggering MOSFET."
             - switch.turn_on: mosfet_control
+
+# Actions to perform on device boot
+
 
 # Interval to check toggling signal for standby/on detection
 interval:
@@ -77,40 +92,39 @@ interval:
           static int low_duration = 0;
           static std::string last_state;
 
-          // Track the global syncing state (reset each interval)
+          // Reset syncing flag at each interval check
           id(syncing) = false;
 
-          // Check logic for the state of GPIO12 (power LED)
           if (id(power_led).state) {
             high_duration++;
-            low_duration = 0;  
+            low_duration = 0;
 
-            // If it’s been high for more than 3 seconds, the Ice Maker is ON
+            // If the LED has been high for more than 3 seconds, Ice Maker is ON
             if (high_duration >= 3 && last_state != "ON") {
               id(ice_maker_state).publish_state("ON");
               last_state = "ON";
 
-              // Sync the Home Assistant switch to reflect the actual state without triggering the MOSFET
+              // Sync HA switch to match actual Ice Maker state
               if (!id(ice_maker_switch).state) {
-                id(syncing) = true;  // Prevent actions during syncing
-                id(ice_maker_switch).turn_on();  // Update switch UI to ON (sync without action)
-                ESP_LOGD("sync", "Setting Ice Maker switch to ON based on actual device state.");
+                id(syncing) = true;
+                id(ice_maker_switch).turn_on();  
+                ESP_LOGD("sync", "Switch synced - Device is ON.");
               }
             }
           } else {
             low_duration++;
-            high_duration = 0;  
+            high_duration = 0;
 
-            // If it’s been low for more than 3 seconds, the Ice Maker is OFF
+            // If the LED has been low for more than 3 seconds, Ice Maker is OFF
             if (low_duration >= 3 && last_state != "OFF") {
               id(ice_maker_state).publish_state("OFF");
               last_state = "OFF";
 
-              // Sync the Home Assistant switch to reflect the actual state without triggering the MOSFET
+              // Sync HA switch to match actual Ice Maker state
               if (id(ice_maker_switch).state) {
-                id(syncing) = true;  // Prevent actions during syncing
-                id(ice_maker_switch).turn_off();  // Update switch UI to OFF (sync without action)
-                ESP_LOGD("sync", "Setting Ice Maker switch to OFF based on actual device state.");
+                id(syncing) = true;
+                id(ice_maker_switch).turn_off();  
+                ESP_LOGD("sync", "Switch synced - Device is OFF.");
               }
             }
           }
@@ -119,23 +133,23 @@ interval:
 binary_sensor:
   - platform: gpio
     pin: GPIO12  
-    id: power_led  # Internal only, we don't want this state exposed to HA
+    id: power_led  
     internal: true
 
-  # Binary sensor for Ice Full detection
+# Ice Full sensor
   - platform: gpio
     pin: GPIO4 
     name: "Ice Full"
 
-# Binary sensor for Water Empty status detection on GPIO13
+# Water Empty status detection on GPIO13
   - platform: gpio
     pin: GPIO16 
     name: "Water Empty"
 
-# Text sensor to report "Ice Maker State" which gets updated only if actual state changes
+# Text sensor for Power state
 text_sensor:
   - platform: template
     name: "Power"
     id: ice_maker_state
     icon: "mdi:power"
-    update_interval: never  # Manually updated when state changes in the lambda
+    update_interval: never  
