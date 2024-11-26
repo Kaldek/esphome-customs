@@ -27,3 +27,6 @@ We monitor the power feed to the Power LED, connected directly to GPIO12 of the 
 
 #### Ice Full and Water Empty monitoring
 We monitor the power feed to these LEDs, connected to GPIO4 (ice full) and GPIO16 (water empty).  When the power on these GPIO pins goes High, this is triggers these states.
+
+#### Stuff that's less than optimal
+I don't have a 10k pulldown resistor on the MOSFET gate, which I really should have installed.  If the ESP8266 ever goes offline, the ice machine goes bananas with the power switch constantly cycling.
